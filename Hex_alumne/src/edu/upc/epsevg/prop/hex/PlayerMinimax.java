@@ -137,4 +137,3 @@ public class PlayerMinimax implements IPlayer, IAuto {
         return "Minimax Auto, Depth: " + maxDepth;
     }
 }
-jiale
