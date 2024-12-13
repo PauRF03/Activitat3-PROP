@@ -27,7 +27,7 @@ public class Game {
                 
                 IPlayer player1 = new H_E_X_Player(2/*GB*/);
                 
-                IPlayer player2 = new PlayerMinimax(3);
+                IPlayer player2 = new PlayerMinimax(4);
                                 
                 new Board(player1 , player2, 11 /*mida*/,  10/*s*/, false);
              }
