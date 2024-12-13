@@ -2,6 +2,8 @@ package edu.upc.epsevg.prop.hex;
 
 import java.awt.Point;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 
 /**
  * Implementación de un jugador automático que emplea el algoritmo Minimax con poda alfa-beta.
@@ -9,20 +11,26 @@ import java.util.List;
  */
 public class PlayerMinimax implements IPlayer, IAuto {
     private final int maxDepth;
-
+    private final Map<Double, HexGameStatus> jugades; //Obtenir la clau creant un tauler de pesos i utilitzar els pesos de buits per deduir quin tauler és.
+    private int exploredNodesCount;
+    /*
+        int 
+    */
     /**
      * Constructor del jugador minimax.
      * @param maxDepth Profundidad máxima de búsqueda.
      */
     public PlayerMinimax(int maxDepth) {
         this.maxDepth = maxDepth;
+        this.jugades = new HashMap<>();
+        exploredNodesCount = 0;
     }
 
     @Override
     public PlayerMove move(HexGameStatus hgs) {
         Point bestMove = null;
         int bestValue = Integer.MIN_VALUE;
-        int exploredNodesCount = 0;
+        exploredNodesCount = 0;
 
         // Obtener todos los movimientos posibles desde el estado actual
         List<MoveNode> possibleMoves = hgs.getMoves();
@@ -70,15 +78,15 @@ public class PlayerMinimax implements IPlayer, IAuto {
         // Caso base: juego terminado o profundidad alcanzada
         if (hgs.isGameOver() || depth == 0) {
             Heuristica h = new Heuristica(hgs);
-            return h.evaluate();
+            return (int)h.evaluate(-1);
         }
 
         List<MoveNode> possibleMoves = hgs.getMoves();
-
+        exploredNodesCount++;
         // Si no hay movimientos, evaluamos el estado actual (posible estado terminal)
         if (possibleMoves == null || possibleMoves.isEmpty()) {
             Heuristica h = new Heuristica(hgs);
-            return h.evaluate();
+            return (int)h.evaluate(-1);
         }
 
         if (isMaximizingPlayer) {
