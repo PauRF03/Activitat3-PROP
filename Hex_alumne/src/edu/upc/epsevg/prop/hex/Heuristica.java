@@ -1,13 +1,10 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package edu.upc.epsevg.prop.hex;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.awt.Point;
 import java.util.PriorityQueue;
 
 /**
@@ -15,162 +12,84 @@ import java.util.PriorityQueue;
  * @author Pau Ramos
  * @author Jia Le Chen
  */
+
 public class Heuristica {
+    
+    private final HexGameStatus board;
+    private final int[] dx = {-1, -1, 0, 0, 1, 1};
+    private final int[] dy = {0, 1, -1, 1, -1, 0};
 
-    private HexGameStatus tauler;
-
-    public Heuristica(HexGameStatus t) {
-        this.tauler = t;
+    public Heuristica(HexGameStatus board) {
+        this.board = board;
     }
 
-    /**
-     * Función de evaluación heurística del estado del juego. Actualmente
-     * retorna 0, pero debería mejorarse para considerar: - Proximidad a la
-     * victoria. - Cadenas conectadas. - Control del tablero.
-     *
-     * @return Valor heurístico del estado. Mayor es mejor para el jugador
-     * maximizador.
-     */
-    // Funció heurística general
-    public double evaluate(int player) {
-        int opponent = (player == -1) ? 1 : -1;
-
-        double longestPathPlayer = calculateLongestPath(player);
-        double longestPathOpponent = calculateLongestPath(opponent);
-
-        double proximityPlayer = calculateProximity(player);
-        double proximityOpponent = calculateProximity(opponent);
-
-        double strategicControl = calculateStrategicControl(player);
-
-        // Ponderacions ajustables
-        double w3 = 1.0, w4 = 1.0, w5 = 2.0, w6 = 3.0, w7 = 3.0;
-
-        return w3 * proximityPlayer - w4 * proximityOpponent
-                + w5 * strategicControl + w6 * longestPathPlayer - w7 * longestPathOpponent;
+    public int evaluate(int player) {
+        int opponent = -1;
+        if(player == -1) opponent = 1;
+        int playerDistance = shortestPath(player);
+        int opponentDistance = shortestPath(opponent);
+        
+        // Retorna una heurística basada en la diferència de distàncies.
+        return opponentDistance - playerDistance;
     }
 
-// Modificar Dijkstra per calcular el camí més llarg
-    private double calculateLongestPath(int player) {
-        // Matriu de distàncies inicialitzada a valors mínims
-        double[][] distance = new double[tauler.getSize()][tauler.getSize()];
-        for (int i = 0; i < tauler.getSize(); i++) {
-            Arrays.fill(distance[i], Double.MIN_VALUE);
-        }
-
-        // Cola de prioritats per a Dijkstra modificat
-        PriorityQueue<Node> pq = new PriorityQueue<>(Comparator.comparingDouble(n -> -n.cost)); // Max-Heap
-
-        // Afegir les peces del costat inicial del jugador
-        if (player == 1) {
-            for (int row = 0; row < tauler.getSize(); row++) {
-                if (tauler.getPos(row, 0) == player || tauler.getPos(row, 0) == 0) { // Inclou caselles buides
-                    pq.add(new Node(row, 0, 1));
-                    distance[row][0] = 1;
+    private int shortestPath(int player) {
+        PriorityQueue<Node> pq = new PriorityQueue<>(Comparator.comparingInt(node -> node.distance));
+        boolean[][] visited = new boolean[board.getSize()][board.getSize()];
+        
+        // Afegim els nodes inicials a la cua de prioritats.
+        if (player == 1) { // Jugador 1 connecta esquerra-dreta.
+            for (int i = 0; i < board.getSize(); i++) {
+                if (board.getPos(i, 0) == player || board.getPos(i, 0) == 0) {
+                    pq.add(new Node(new Point(i, 0), 0));
                 }
             }
-        } else {
-            for (int col = 0; col < tauler.getSize(); col++) {
-                if (tauler.getPos(0, col) == player || tauler.getPos(0, col) == 0) { // Inclou caselles buides
-                    pq.add(new Node(0, col, 1));
-                    distance[0][col] = 1;
+        } else { // Jugador 2 connecta dalt-baix.
+            for (int j = 0; j < board.getSize(); j++) {
+                if (board.getPos(0, j) == player || board.getPos(0, j) == 0) {
+                    pq.add(new Node(new Point(0, j), 0));
                 }
             }
         }
 
-        double maxPath = 0;
-
-        // Dijkstra modificat per maximitzar el camí més llarg
+        // Executem l'algorisme de Dijkstra.
         while (!pq.isEmpty()) {
             Node current = pq.poll();
 
-            // Si arriba al costat oposat, actualitzar el camí més llarg
-            if ((player == 1 && current.col == tauler.getSize() - 1)
-                    || (player == 2 && current.row == tauler.getSize() - 1)) {
-                maxPath = Math.max(maxPath, current.cost);
+            if (visited[current.p.x][current.p.y] || board.getPos(current.p) != player) continue;
+            visited[current.p.x][current.p.y] = true;
+
+            // Comprova si hem arribat al costat oposat.
+            if ((player == 1 && current.p.y == board.getSize() - 1) || (player == 2 && current.p.x == board.getSize() - 1)) {
+                return current.distance;
             }
 
-            // Explorar veïns
-            for (Node neighbor : getNeighbors(current.row, current.col)) {
-                int newRow = neighbor.row;
-                int newCol = neighbor.col;
+            // Recorre els veïns.
+            for (int i = 0; i < 6; i++) {
+                int nx = current.p.x + dx[i];
+                int ny = current.p.y + dy[i];
 
-                if (tauler.getPos(newRow, newCol) == player || tauler.getPos(newRow, newCol) == 0) { // Caselles pròpies o buides
-                    double newCost = current.cost + 1; // Incrementar el cost del camí
-                    if (newCost > distance[newRow][newCol]) {
-                        distance[newRow][newCol] = newCost;
-                        pq.add(new Node(newRow, newCol, newCost));
-                    }
+                if (isValid(nx, ny) && !visited[nx][ny] && (board.getPos(nx, ny) == player || board.getPos(nx, ny) == 0)) {
+                    pq.add(new Node(new Point(nx, ny), current.distance + 1));
                 }
             }
         }
 
-        return maxPath;
+        // Si no es pot arribar al costat oposat, retorna un valor alt (per representar infinit).
+        return Integer.MAX_VALUE;
     }
 
-    // Calcula la proximitat al costat objectiu
-    private double calculateProximity(int player) {
-        double totalProximity = 0;
-        int count = 0;
-
-        for (int row = 0; row < tauler.getSize(); row++) {
-            for (int col = 0; col < tauler.getSize(); col++) {
-                if (tauler.getPos(row, col) == player) {
-                    if (player == 1) {
-                        totalProximity += (tauler.getSize() - 1 - col); // Distància al costat dret
-                    } else {
-                        totalProximity += (tauler.getSize() - 1 - row); // Distància al costat inferior
-                    }
-                    count++;
-                }
-            }
-        }
-
-        return count > 0 ? totalProximity / count : Double.MAX_VALUE;
+    private boolean isValid(int x, int y) {
+        return x >= 0 && x < board.getSize() && y >= 0 && y < board.getSize();
     }
 
-    // Calcula el control estratègic (centralitat)
-    private double calculateStrategicControl(int player) {
-        double score = 0;
-        int center = tauler.getSize() / 2;
-
-        for (int row = 0; row < tauler.getSize(); row++) {
-            for (int col = 0; col < tauler.getSize(); col++) {
-                if (tauler.getPos(row, col) == player) {
-                    score += 1.0 / (Math.abs(row - center) + Math.abs(col - center) + 1);
-                }
-            }
-        }
-
-        return score;
-    }
-
-    // Retorna els veïns d'una cel·la
-    private List<Node> getNeighbors(int row, int col) {
-        int[][] directions = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}, {-1, 1}, {1, -1}};
-        List<Node> neighbors = new ArrayList<>();
-
-        for (int[] dir : directions) {
-            int newRow = row + dir[0];
-            int newCol = col + dir[1];
-            if (newRow >= 0 && newRow < tauler.getSize() && newCol >= 0 && newCol < tauler.getSize()) {
-                neighbors.add(new Node(newRow, newCol, 0));
-            }
-        }
-
-        return neighbors;
-    }
-
-    // Classe auxiliar per Dijkstra
-    static class Node {
-
-        int row, col;
-        double cost;
-
-        Node(int row, int col, double cost) {
-            this.row = row;
-            this.col = col;
-            this.cost = cost;
+    private class Node {
+        int distance;
+        Point p;
+        
+        public Node(Point p, int distance) {
+            this.p = p;
+            this.distance = distance;
         }
     }
 }

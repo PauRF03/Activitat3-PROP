@@ -13,9 +13,8 @@ public class PlayerMinimax implements IPlayer, IAuto {
     private final int maxDepth;
     private final Map<Double, HexGameStatus> jugades; //Obtenir la clau creant un tauler de pesos i utilitzar els pesos de buits per deduir quin tauler és.
     private int exploredNodesCount;
-    /*
-        int 
-    */
+    private boolean timeout;
+
     /**
      * Constructor del jugador minimax.
      * @param maxDepth Profundidad máxima de búsqueda.
@@ -23,7 +22,8 @@ public class PlayerMinimax implements IPlayer, IAuto {
     public PlayerMinimax(int maxDepth) {
         this.maxDepth = maxDepth;
         this.jugades = new HashMap<>();
-        exploredNodesCount = 0;
+        this.exploredNodesCount = 0;
+        this.timeout = false;
     }
 
     @Override
@@ -37,7 +37,7 @@ public class PlayerMinimax implements IPlayer, IAuto {
 
         // Si no hay movimientos posibles, retornar un movimiento con valor neutro.
         // Esto depende de la lógica del juego: si no hay movimientos, ¿es un estado terminal?
-        if (possibleMoves == null || possibleMoves.isEmpty()) {
+        if (possibleMoves.isEmpty()) {
             return new PlayerMove(null, exploredNodesCount, maxDepth, SearchType.MINIMAX);
         }
 
@@ -78,15 +78,15 @@ public class PlayerMinimax implements IPlayer, IAuto {
         // Caso base: juego terminado o profundidad alcanzada
         if (hgs.isGameOver() || depth == 0) {
             Heuristica h = new Heuristica(hgs);
-            return (int)h.evaluate(-1);
+            return h.evaluate(hgs.getCurrentPlayerColor());
         }
-
+        timeout = false;
         List<MoveNode> possibleMoves = hgs.getMoves();
         exploredNodesCount++;
         // Si no hay movimientos, evaluamos el estado actual (posible estado terminal)
-        if (possibleMoves == null || possibleMoves.isEmpty()) {
+        if (possibleMoves.isEmpty()) {
             Heuristica h = new Heuristica(hgs);
-            return (int)h.evaluate(-1);
+            return h.evaluate(hgs.getCurrentPlayerColor());
         }
 
         if (isMaximizingPlayer) {
@@ -94,14 +94,13 @@ public class PlayerMinimax implements IPlayer, IAuto {
             for (MoveNode move : possibleMoves) {
                 HexGameStatus newState = new HexGameStatus(hgs);
                 newState.placeStone(move.getPoint());
-
                 int eval = minimax(newState, depth - 1, alpha, beta, false);
                 maxEval = Math.max(maxEval, eval);
-
                 alpha = Math.max(alpha, eval);
                 if (beta <= alpha) {
                     break; // Poda beta
                 }
+                if(timeout) break;
             }
             return maxEval;
         } else {
@@ -109,14 +108,13 @@ public class PlayerMinimax implements IPlayer, IAuto {
             for (MoveNode move : possibleMoves) {
                 HexGameStatus newState = new HexGameStatus(hgs);
                 newState.placeStone(move.getPoint());
-
                 int eval = minimax(newState, depth - 1, alpha, beta, true);
                 minEval = Math.min(minEval, eval);
-
                 beta = Math.min(beta, eval);
                 if (beta <= alpha) {
                     break; // Poda alfa
                 }
+                if(timeout) break;
             }
             return minEval;
         }
@@ -124,7 +122,7 @@ public class PlayerMinimax implements IPlayer, IAuto {
     
     @Override
     public void timeout() {
-        // Método no implementado. Podría usarse para detener la búsqueda si se excede un tiempo límite.
+        timeout = true;
     }
 
     @Override
