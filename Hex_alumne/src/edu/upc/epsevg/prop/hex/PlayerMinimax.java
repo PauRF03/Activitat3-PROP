@@ -1,29 +1,32 @@
 package edu.upc.epsevg.prop.hex;
 
 import java.awt.Point;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
-import java.util.HashMap;
 
 /**
- * Implementación de un jugador automático que emplea el algoritmo Minimax con poda alfa-beta.
- * La heurística por defecto es trivial y debe mejorarse para un mejor rendimiento.
+ * Implementación de un jugador automático que emplea el algoritmo Minimax con
+ * poda alfa-beta. La heurística por defecto es trivial y debe mejorarse para un
+ * mejor rendimiento.
  */
 public class PlayerMinimax implements IPlayer, IAuto {
+
     private final int maxDepth;
-    private final Map<Double, HexGameStatus> jugades; //Obtenir la clau creant un tauler de pesos i utilitzar els pesos de buits per deduir quin tauler és.
     private int exploredNodesCount;
     private boolean timeout;
+    private boolean iterativeDeepening;
 
     /**
      * Constructor del jugador minimax.
+     *
      * @param maxDepth Profundidad máxima de búsqueda.
      */
-    public PlayerMinimax(int maxDepth) {
+    public PlayerMinimax(int maxDepth, boolean iterativeDeepening) {
         this.maxDepth = maxDepth;
-        this.jugades = new HashMap<>();
         this.exploredNodesCount = 0;
         this.timeout = false;
+        this.iterativeDeepening = iterativeDeepening;
     }
 
     @Override
@@ -32,35 +35,72 @@ public class PlayerMinimax implements IPlayer, IAuto {
         int bestValue = Integer.MIN_VALUE;
         exploredNodesCount = 0;
 
-        // Obtener todos los movimientos posibles desde el estado actual
+        // Obtenir tots els moviments possibles des de l'estat actual
         List<MoveNode> possibleMoves = hgs.getMoves();
 
-        // Si no hay movimientos posibles, retornar un movimiento con valor neutro.
-        // Esto depende de la lógica del juego: si no hay movimientos, ¿es un estado terminal?
+        List<MoveNode> selectedMoves = new ArrayList<>();
+        // Si no hi ha moviments possibles, retorna un moviment neutre.
         if (possibleMoves.isEmpty()) {
             return new PlayerMove(null, exploredNodesCount, maxDepth, SearchType.MINIMAX);
         }
 
-        // Para cada movimiento posible, evaluamos el resultado a través de minimax
-        for (MoveNode move : possibleMoves) {
-            Point currentPoint = move.getPoint();
+        // Si iterativeDeepening està habilitat
+        if (iterativeDeepening) {
+            for (int depth = 1; depth <= maxDepth; depth++) {
+                int currentBestValue = Integer.MIN_VALUE;
+                Point currentBestMove = null;
+                possibleMoves.addAll(0, selectedMoves);
+                // Explora tots els moviments possibles a aquesta profunditat
+                for (MoveNode move : possibleMoves) {
+                    Point currentPoint = move.getPoint();
 
-            // Simular el movimiento
-            HexGameStatus newState = new HexGameStatus(hgs);
-            newState.placeStone(currentPoint);
+                    // Simular el moviment
+                    HexGameStatus newState = new HexGameStatus(hgs);
+                    newState.placeStone(currentPoint);
 
-            // Llamamos a minimax para evaluar la calidad de este movimiento
-            int value = minimax(newState, maxDepth - 1, Integer.MIN_VALUE, Integer.MAX_VALUE, false);
+                    // Crida a Minimax per a aquesta profunditat
+                    int value = minimax(newState, depth - 1, Integer.MIN_VALUE, Integer.MAX_VALUE, false);
 
-            // Actualizar el mejor movimiento si encontramos uno de mayor valor
-            if (value > bestValue) {
-                bestValue = value;
-                bestMove = currentPoint;
+                    // Actualitzar el millor moviment si trobem un de millor
+                    if (value > currentBestValue) {
+                        currentBestValue = value;
+                        currentBestMove = currentPoint;
+                    }
+                }
+                // Actualitza el millor moviment trobat fins ara
+                if (currentBestValue > bestValue) {
+                    bestValue = currentBestValue;
+                    bestMove = currentBestMove;
+                }
+                // Comprova si hem superat el temps límit
+                if (timeout) {
+                    break;
+                }
+                if (bestMove != null && !selectedMoves.contains(new MoveNode(bestMove))) {
+                    selectedMoves.add(new MoveNode(bestMove));
+                }
             }
+        } else {
+            // Minimax normal sense iterative deepening
+            for (MoveNode move : possibleMoves) {
+                Point currentPoint = move.getPoint();
 
-            exploredNodesCount++;
+                // Simular el moviment
+                HexGameStatus newState = new HexGameStatus(hgs);
+                newState.placeStone(currentPoint);
+
+                // Crida a Minimax
+                int value = minimax(newState, maxDepth - 1, Integer.MIN_VALUE, Integer.MAX_VALUE, false);
+
+                // Actualitzar el millor moviment si trobem un de millor
+                if (value > bestValue) {
+                    bestValue = value;
+                    bestMove = currentPoint;
+                }
+
+                exploredNodesCount++;
+            }
         }
-
         return new PlayerMove(bestMove, exploredNodesCount, maxDepth, SearchType.MINIMAX);
     }
 
@@ -71,7 +111,8 @@ public class PlayerMinimax implements IPlayer, IAuto {
      * @param depth Profundidad restante de la búsqueda.
      * @param alpha Límite inferior (poda alfa).
      * @param beta Límite superior (poda beta).
-     * @param isMaximizingPlayer Indica si estamos en el nivel del jugador maximizador.
+     * @param isMaximizingPlayer Indica si estamos en el nivel del jugador
+     * maximizador.
      * @return El valor heurístico del estado.
      */
     private int minimax(HexGameStatus hgs, int depth, int alpha, int beta, boolean isMaximizingPlayer) {
@@ -100,7 +141,9 @@ public class PlayerMinimax implements IPlayer, IAuto {
                 if (beta <= alpha) {
                     break; // Poda beta
                 }
-                if(timeout) break;
+                if (timeout) {
+                    break;
+                }
             }
             return maxEval;
         } else {
@@ -114,12 +157,14 @@ public class PlayerMinimax implements IPlayer, IAuto {
                 if (beta <= alpha) {
                     break; // Poda alfa
                 }
-                if(timeout) break;
+                if (timeout) {
+                    break;
+                }
             }
             return minEval;
         }
     }
-    
+
     @Override
     public void timeout() {
         timeout = true;

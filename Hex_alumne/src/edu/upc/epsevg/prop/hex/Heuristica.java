@@ -361,8 +361,8 @@ public int calculateSpacesToConnect(int player) {
     }
 
     // Imprimir los caminos más cortos hacia ambos extremos
-    System.out.println("Camino más corto al oeste: " + shortestPathToWest);
-    System.out.println("Camino más corto al este: " + shortestPathToEast);
+    //System.out.println("Camino más corto al oeste: " + shortestPathToWest);
+    //System.out.println("Camino más corto al este: " + shortestPathToEast);
 
     return minSpaces == Integer.MAX_VALUE ? 0 : minSpaces;
 }
