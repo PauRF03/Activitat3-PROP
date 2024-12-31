@@ -2,6 +2,7 @@ package edu.upc.epsevg.prop.hex;
 
 import edu.upc.epsevg.prop.hex.players.HumanPlayer;
 import edu.upc.epsevg.prop.hex.players.RandomPlayer;
+import edu.upc.epsevg.prop.hex.players.HEXercici;
 import edu.upc.epsevg.prop.hex.IPlayer;
 import edu.upc.epsevg.prop.hex.players.H_E_X_Player;
 
@@ -23,11 +24,11 @@ public class Game {
             @Override
             public void run() {
                 
-                IPlayer player1 = new H_E_X_Player(2/*GB*/);
-                
-                IPlayer player2 = new PlayerMinimax(4, true);
+                IPlayer player2 = new H_E_X_Player(2/*GB*/);
+                               
+                IPlayer player1 = new HEXercici(4, false);
                                 
-                new Board(player1 , player2, 5 /*11*/,  10/*s*/, false);
+                new Board(player1 , player2, 11 /*11*/,  10/*s*/, false);
              }
         });
     }
